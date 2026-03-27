@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SumFinder</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --surface: #18181f;
+      --surface2: #21212c;
+      --border: #2e2e3e;
+      --accent: #7c6cfc;
+      --accent2: #4ecdc4;
+      --danger: #ff6b6b;
+      --warn: #ffd166;
+      --text: #e8e8f0;
+      --muted: #6b6b85;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Header ── */
+    .header {
+      padding: 18px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .header h1 { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+    .header span { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+    /* ── Main ── */
+    .main { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Section ── */
+    .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    /* ── Range selector ── */
+    .range-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .range-display {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--accent2);
+      background: var(--surface2);
+      border-radius: 6px;
+      padding: 8px 10px;
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+    }
+    .range-display.empty { color: var(--muted); font-style: italic; font-family: 'Syne', sans-serif; font-size: 12px; }
+
+    .btn-capture {
+      background: linear-gradient(135deg, var(--accent), #5b4fe0);
+      color: white;
+      border: none;
+      border-radius: 7px;
+      padding: 9px 14px;
+      font-family: 'Syne', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      letter-spacing: 0.3px;
+    }
+    .btn-capture:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-capture:active { transform: translateY(0); }
+
+    /* ── Amount input ── */
+    .amount-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--surface2);
+      border-radius: 7px;
+      padding: 3px;
+    }
+    .tab {
+      flex: 1;
+      padding: 6px;
+      border: none;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--muted);
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .amount-input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 12px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .amount-input:focus { border-color: var(--accent); }
+    .amount-input::placeholder { color: var(--muted); }
+
+    .cell-ref-input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 12px;
+      color: var(--accent2);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .cell-ref-input:focus { border-color: var(--accent2); }
+    .cell-ref-input::placeholder { color: var(--muted); font-style: italic; }
+
+    .btn-read-cell {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 12px;
+      color: var(--accent2);
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-read-cell:hover { border-color: var(--accent2); background: rgba(78,205,196,0.08); }
+
+    /* ── Search button ── */
+    .btn-search {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: var(--radius);
+      color: white;
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+      box-shadow: 0 4px 20px rgba(124,108,252,0.3);
+    }
+    .btn-search:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(124,108,252,0.4); }
+    .btn-search:active { transform: translateY(0); }
+    .btn-search:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── Loading ── */
+    .loading {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 24px;
+    }
+    .loading.visible { display: flex; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading p { color: var(--muted); font-size: 13px; }
+
+    /* ── Results ── */
+    .results { display: none; flex-direction: column; gap: 12px; }
+    .results.visible { display: flex; }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .btn-clear {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      color: var(--muted);
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-clear:hover { color: var(--text); border-color: var(--text); }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color 0.2s;
+      animation: fadeUp 0.3s ease both;
+    }
+    .result-card:nth-child(2) { animation-delay: 0.05s; }
+    .result-card:nth-child(3) { animation-delay: 0.1s; }
+    .result-card:nth-child(4) { animation-delay: 0.15s; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-card:hover { border-color: var(--accent); }
+
+    .card-header {
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+    }
+    .card-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .badge-exact  { background: rgba(124,108,252,0.2); color: var(--accent); }
+    .badge-less   { background: rgba(255,107,107,0.15); color: var(--danger); }
+    .badge-more   { background: rgba(255,209,102,0.15); color: var(--warn); }
+
+    .card-sum {
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .card-sum .diff {
+      font-size: 10px;
+      color: var(--muted);
+      margin-left: 6px;
+    }
+
+    .card-body { padding: 10px 12px; }
+
+    .cells-list {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--accent2);
+      background: var(--surface2);
+      border-radius: 6px;
+      padding: 8px 10px;
+      line-height: 1.6;
+      max-height: 70px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      word-break: break-all;
+    }
+    .cells-list::-webkit-scrollbar { width: 4px; }
+    .cells-list::-webkit-scrollbar-track { background: transparent; }
+    .cells-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .cell-count {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 6px;
+    }
+    .btn-action {
+      flex: 1;
+      padding: 7px 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    .btn-action:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,108,252,0.08); }
+    .btn-action.cut:hover { border-color: var(--danger); color: var(--danger); background: rgba(255,107,107,0.08); }
+
+    /* ── Error ── */
+    .error-box {
+      display: none;
+      background: rgba(255,107,107,0.1);
+      border: 1px solid rgba(255,107,107,0.3);
+      border-radius: var(--radius);
+      padding: 12px;
+      font-size: 13px;
+      color: var(--danger);
+    }
+    .error-box.visible { display: block; }
+
+    /* ── Footer ── */
+    .footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">∑</div>
+  <div>
+    <h1>SumFinder</h1>
+    <span>v1.0.0</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- RANGO -->
+  <div>
+    <div class="section-label">1. Selecciona el rango</div>
+    <div class="range-box">
+      <div class="range-display empty" id="rangeDisplay">Ningún rango seleccionado</div>
+      <button class="btn-capture" id="btnCapture">📌 Capturar selección actual</button>
+    </div>
+  </div>
+
+  <!-- MONTO -->
+  <div>
+    <div class="section-label">2. Monto objetivo</div>
+    <div class="amount-box">
+      <div class="tabs">
+        <button class="tab active" id="tabManual" onclick="switchTab('manual')">✏️ Manual</button>
+        <button class="tab" id="tabCell" onclick="switchTab('cell')">📍 Desde celda</button>
+      </div>
+      <div id="panelManual" class="input-row">
+        <input class="amount-input" id="amountInput" type="number" placeholder="Ej: 15000.50" step="any" />
+      </div>
+      <div id="panelCell" style="display:none" class="input-row">
+        <input class="cell-ref-input" id="cellRefInput" placeholder="Ej: B15" />
+        <button class="btn-read-cell" id="btnReadCell" onclick="readCellValue()">Leer →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUSCAR -->
+  <button class="btn-search" id="btnSearch" onclick="runSearch()">
+    🔍 BUSCAR COMBINACIONES
+  </button>
+
+  <!-- ERROR -->
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- LOADING -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Analizando combinaciones…</p>
+  </div>
+
+  <!-- RESULTADOS -->
+  <div class="results" id="results">
+    <div class="results-header">
+      <div class="section-label" style="margin:0">Resultados</div>
+      <button class="btn-clear" onclick="clearResults()">✕ Limpiar</button>
+    </div>
+    <!-- Cards generadas dinámicamente -->
+  </div>
+
+</div>
+
+<div class="footer">SumFinder · Excel Add-in</div>
+
+<script src="taskpane.js"></script>
+</body>
+</html>

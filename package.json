@@ -1,0 +1,14 @@
+{
+  "name": "sumfinder-excel-addin",
+  "version": "1.0.0",
+  "description": "Encuentra combinaciones de celdas que sumen un monto objetivo",
+  "scripts": {
+    "start": "office-addin-dev-certs install --machine && npx http-server src -p 3000 --ssl --cert ~/.office-addin-dev-certs/localhost.crt --key ~/.office-addin-dev-certs/localhost.key -c-1",
+    "start-simple": "npx http-server src -p 3000 -c-1",
+    "install-certs": "office-addin-dev-certs install --machine"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "office-addin-dev-certs": "^1.12.0"
+  }
+}
