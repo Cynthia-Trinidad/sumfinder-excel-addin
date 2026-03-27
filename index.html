@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SumFinder — Encuentra combinaciones en Excel</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #080b0f;
+      --surface: #0f1318;
+      --surface2: #161c24;
+      --surface3: #1d2530;
+      --border: #252e3a;
+      --accent: #00d4aa;
+      --accent2: #0088ff;
+      --accent3: #ff6b35;
+      --warn: #ffd166;
+      --text: #e2eaf4;
+      --muted: #5a6878;
+      --radius: 12px;
+      --glow: 0 0 40px rgba(0,212,170,0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Background grid ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 60px 20px 40px;
+    }
+
+    .logo-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 64px; height: 64px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 18px;
+      font-size: 28px;
+      margin-bottom: 20px;
+      box-shadow: 0 0 60px rgba(0,212,170,0.3);
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 40px rgba(0,212,170,0.2); }
+      50% { box-shadow: 0 0 80px rgba(0,212,170,0.4); }
+    }
+
+    .hero h1 {
+      font-size: clamp(32px, 6vw, 56px);
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+
+    .hero h1 span {
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 16px;
+      color: var(--muted);
+      max-width: 420px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* ── Main container ── */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 20px 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── Step card ── */
+    .step-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .step-card.active { border-color: rgba(0,212,170,0.3); box-shadow: var(--glow); }
+
+    .step-header {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .step-num.done {
+      background: rgba(0,212,170,0.15);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .step-title { font-size: 14px; font-weight: 600; letter-spacing: 0.3px; }
+    .step-subtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .step-body { padding: 20px; }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(0,212,170,0.04);
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon { font-size: 36px; margin-bottom: 12px; }
+    .drop-text { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .drop-hint { font-size: 12px; color: var(--muted); }
+
+    .file-loaded {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0,212,170,0.08);
+      border: 1px solid rgba(0,212,170,0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+    }
+
+    .file-loaded.visible { display: flex; }
+    .file-icon { font-size: 24px; }
+    .file-name { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent); }
+    .file-meta { font-size: 11px; color: var(--muted); }
+    .btn-reupload {
+      margin-left: auto;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 10px;
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+      font-family: 'Bricolage Grotesque', sans-serif;
+      transition: all 0.15s;
+    }
+    .btn-reupload:hover { color: var(--text); border-color: var(--text); }
+
+    /* ── Sheet / Column selectors ── */
+    .select-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .select-group {
+      flex: 1;
+      min-width: 160px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .select-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .custom-select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+
+    .custom-select:focus { border-color: var(--accent); }
+    .custom-select option { background: var(--surface2); }
+
+    /* ── Preview table ── */
+    .preview-wrap {
+      display: none;
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .preview-wrap.visible { display: block; }
+    .preview-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
+    .preview-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+    }
+
+    .preview-table th {
+      background: var(--surface3);
+      padding: 8px 12px;
+      text-align: left;
+      color: var(--accent);
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      position: sticky;
+      top: 0;
+    }
+
+    .preview-table td {
+      padding: 6px 12px;
+      border-top: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .preview-table tr:hover td { background: var(--surface2); }
+
+    .preview-count {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* ── Amount input ── */
+    .amount-wrap {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .amount-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .amount-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 18px;
+      font-weight: 500;
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+
+    .amount-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,212,170,0.08); }
+    .amount-input::placeholder { color: var(--muted); font-size: 14px; }
+
+    /* ── Search button ── */
+    .btn-search {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: var(--radius);
+      color: #080b0f;
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 30px rgba(0,212,170,0.25);
+    }
+
+    .btn-search:hover { transform: translateY(-2px); box-shadow: 0 8px 40px rgba(0,212,170,0.35); }
+    .btn-search:active { transform: translateY(0); }
+    .btn-search:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── Loading ── */
+    .loading {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 32px;
+      text-align: center;
+    }
+    .loading.visible { display: flex; }
+
+    .spinner-ring {
+      width: 48px; height: 48px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading p { color: var(--muted); font-size: 14px; }
+
+    /* ── Results ── */
+    .results { display: none; flex-direction: column; gap: 16px; }
+    .results.visible { display: flex; }
+
+    .results-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: slideUp 0.3s ease both;
+    }
+
+    .result-card:nth-child(2) { animation-delay: 0.06s; }
+    .result-card:nth-child(3) { animation-delay: 0.12s; }
+    .result-card:nth-child(4) { animation-delay: 0.18s; }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-card:hover { border-color: rgba(0,212,170,0.25); }
+
+    .rc-header {
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .rc-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-pill {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    .pill-exact { background: rgba(0,212,170,0.15); color: var(--accent); }
+    .pill-less  { background: rgba(255,107,53,0.15); color: var(--accent3); }
+    .pill-more  { background: rgba(255,209,102,0.15); color: var(--warn); }
+
+    .rc-sum {
+      font-family: 'DM Mono', monospace;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .rc-diff {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      margin-left: 8px;
+    }
+
+    .rc-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+
+    .rc-info {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+    }
+
+    .rc-info span { color: var(--text); }
+
+    .cells-scroll {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      max-height: 80px;
+      overflow-y: auto;
+      line-height: 1.8;
+      word-break: break-all;
+    }
+
+    .cells-scroll::-webkit-scrollbar { width: 4px; }
+    .cells-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .rc-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-act {
+      flex: 1;
+      padding: 9px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .btn-act:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,212,170,0.06); }
+    .btn-act.download:hover { border-color: var(--accent2); color: var(--accent2); background: rgba(0,136,255,0.06); }
+
+    /* ── Error ── */
+    .error-box {
+      display: none;
+      background: rgba(255,107,53,0.08);
+      border: 1px solid rgba(255,107,53,0.25);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--accent3);
+    }
+    .error-box.visible { display: block; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-size: 13px;
+      color: var(--text);
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.3s;
+      white-space: nowrap;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      padding: 30px 20px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      position: relative;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="logo-mark">∑</div>
+  <h1>Sum<span>Finder</span></h1>
+  <p>Sube tu archivo Excel, dinos el monto y encontramos qué celdas suman exactamente eso.</p>
+</div>
+
+<div class="container">
+
+  <!-- PASO 1: Subir archivo -->
+  <div class="step-card active" id="card1">
+    <div class="step-header">
+      <div class="step-num" id="num1">1</div>
+      <div>
+        <div class="step-title">Sube tu archivo Excel</div>
+        <div class="step-subtitle">Formato .xlsx</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".xlsx" />
+        <div class="drop-icon">📂</div>
+        <div class="drop-text">Arrastra tu archivo aquí</div>
+        <div class="drop-hint">o haz clic para seleccionar — solo .xlsx</div>
+      </div>
+      <div class="file-loaded" id="fileLoaded">
+        <div class="file-icon">📊</div>
+        <div>
+          <div class="file-name" id="fileName">archivo.xlsx</div>
+          <div class="file-meta" id="fileMeta">—</div>
+        </div>
+        <button class="btn-reupload" onclick="resetFile()">↩ Cambiar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASO 2: Seleccionar hoja y columna -->
+  <div class="step-card" id="card2" style="display:none">
+    <div class="step-header">
+      <div class="step-num" id="num2">2</div>
+      <div>
+        <div class="step-title">Selecciona los datos</div>
+        <div class="step-subtitle">Elige la hoja y columna con los números</div>
+      </div>
+    </div>
+    <div class="step-body" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="select-row">
+        <div class="select-group">
+          <div class="select-label">Hoja</div>
+          <select class="custom-select" id="sheetSelect" onchange="onSheetChange()"></select>
+        </div>
+        <div class="select-group">
+          <div class="select-label">Columna con números</div>
+          <select class="custom-select" id="colSelect" onchange="onColChange()"></select>
+        </div>
+      </div>
+      <div class="preview-wrap" id="previewWrap">
+        <table class="preview-table" id="previewTable"></table>
+      </div>
+      <div class="preview-count" id="previewCount"></div>
+    </div>
+  </div>
+
+  <!-- PASO 3: Monto -->
+  <div class="step-card" id="card3" style="display:none">
+    <div class="step-header">
+      <div class="step-num" id="num3">3</div>
+      <div>
+        <div class="step-title">Monto objetivo</div>
+        <div class="step-subtitle">¿Cuánto quieres que sumen las celdas?</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <div class="amount-wrap">
+        <div class="amount-group">
+          <input class="amount-input" id="amountInput" type="number" placeholder="Ej: 1.500.000" step="any" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUSCAR -->
+  <button class="btn-search" id="btnSearch" onclick="runSearch()" style="display:none">
+    🔍 BUSCAR COMBINACIONES
+  </button>
+
+  <!-- ERROR -->
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- LOADING -->
+  <div class="loading" id="loading">
+    <div class="spinner-ring"></div>
+    <p>Analizando combinaciones…</p>
+  </div>
+
+  <!-- RESULTADOS -->
+  <div class="results" id="results"></div>
+
+</div>
+
+<div class="footer">SumFinder · Versión Web · Todos los datos se procesan en tu navegador</div>
+<div id="toast"></div>
+
+<script>
+// ── Estado ────────────────────────────────────────────────────
+let workbook = null;
+let sheetData = [];      // [{row, value, address}]
+let lastResults = [];
+
+// ── Subir archivo ─────────────────────────────────────────────
+const fileInput = document.getElementById('fileInput');
+const dropZone  = document.getElementById('dropZone');
+
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file) {
+  if (!file) return;
+  if (!file.name.endsWith('.xlsx')) { showError('Solo se aceptan archivos .xlsx'); return; }
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      workbook = XLSX.read(e.target.result, { type: 'array' });
+      showFileLoaded(file);
+      buildSheetSelector();
+      hideError();
+    } catch(err) {
+      showError('No se pudo leer el archivo: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showFileLoaded(file) {
+  document.getElementById('dropZone').style.display = 'none';
+  document.getElementById('fileLoaded').classList.add('visible');
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileMeta').textContent = formatBytes(file.size);
+  document.getElementById('num1').classList.add('done');
+  document.getElementById('num1').textContent = '✓';
+  document.getElementById('card2').style.display = '';
+  document.getElementById('card3').style.display = '';
+  document.getElementById('btnSearch').style.display = '';
+}
+
+function resetFile() {
+  workbook = null; sheetData = [];
+  document.getElementById('dropZone').style.display = '';
+  document.getElementById('fileLoaded').classList.remove('visible');
+  document.getElementById('num1').classList.remove('done');
+  document.getElementById('num1').textContent = '1';
+  document.getElementById('card2').style.display = 'none';
+  document.getElementById('card3').style.display = 'none';
+  document.getElementById('btnSearch').style.display = 'none';
+  document.getElementById('previewWrap').classList.remove('visible');
+  document.getElementById('previewCount').textContent = '';
+  clearResults();
+  fileInput.value = '';
+}
+
+// ── Hoja y columna ────────────────────────────────────────────
+function buildSheetSelector() {
+  const sel = document.getElementById('sheetSelect');
+  sel.innerHTML = '';
+  workbook.SheetNames.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    sel.appendChild(opt);
+  });
+  onSheetChange();
+}
+
+function onSheetChange() {
+  const sheetName = document.getElementById('sheetSelect').value;
+  const sheet = workbook.Sheets[sheetName];
+  const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+  // Detectar columnas con al menos un número
+  const colCount = Math.max(...json.map(r => r.length));
+  const colSel = document.getElementById('colSelect');
+  colSel.innerHTML = '';
+
+  for (let c = 0; c < colCount; c++) {
+    const letter = indexToCol(c);
+    const hasNums = json.some(r => typeof r[c] === 'number');
+    if (hasNums) {
+      const opt = document.createElement('option');
+      opt.value = c;
+      // Usar encabezado si existe
+      const header = json[0] && json[0][c] ? `${letter} — ${json[0][c]}` : `Columna ${letter}`;
+      opt.textContent = header;
+      colSel.appendChild(opt);
+    }
+  }
+
+  if (colSel.options.length === 0) {
+    const opt = document.createElement('option');
+    opt.textContent = 'No se encontraron columnas numéricas';
+    colSel.appendChild(opt);
+  }
+
+  onColChange();
+}
+
+function onColChange() {
+  const sheetName = document.getElementById('sheetSelect').value;
+  const colIdx = parseInt(document.getElementById('colSelect').value);
+  if (isNaN(colIdx)) return;
+
+  const sheet = workbook.Sheets[sheetName];
+  const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+  sheetData = [];
+  for (let r = 0; r < json.length; r++) {
+    const val = json[r][colIdx];
+    if (typeof val === 'number' && !isNaN(val)) {
+      sheetData.push({ row: r + 1, value: val, address: `${indexToCol(colIdx)}${r + 1}` });
+    }
+  }
+
+  renderPreview(sheetData);
+  document.getElementById('num2').classList.add('done');
+  document.getElementById('num2').textContent = '✓';
+}
+
+function renderPreview(data) {
+  const wrap = document.getElementById('previewWrap');
+  const table = document.getElementById('previewTable');
+  const count = document.getElementById('previewCount');
+
+  table.innerHTML = `
+    <thead><tr><th>Celda</th><th>Valor</th></tr></thead>
+    <tbody>${data.slice(0,50).map(d => `<tr><td>${d.address}</td><td>${formatNum(d.value)}</td></tr>`).join('')}</tbody>
+  `;
+
+  wrap.classList.add('visible');
+  count.textContent = `${data.length} valores numéricos encontrados${data.length > 50 ? ' (mostrando primeros 50)' : ''}`;
+}
+
+// ── Buscar ────────────────────────────────────────────────────
+function runSearch() {
+  hideError();
+  clearResults();
+
+  if (sheetData.length === 0) { showError('Selecciona una hoja y columna con números.'); return; }
+
+  const target = parseFloat(document.getElementById('amountInput').value);
+  if (isNaN(target)) { showError('Ingresa un monto objetivo válido.'); return; }
+
+  document.getElementById('num3').classList.add('done');
+  document.getElementById('num3').textContent = '✓';
+
+  showLoading(true);
+  document.getElementById('btnSearch').disabled = true;
+
+  setTimeout(() => {
+    try {
+      const values = sheetData.map(d => d.value);
+      const addresses = sheetData.map(d => d.address);
+      const results = findThreeCombinations(values, addresses, target);
+      lastResults = results;
+      renderResults(results, target);
+    } catch(e) {
+      showError('Error en la búsqueda: ' + e.message);
+    } finally {
+      showLoading(false);
+      document.getElementById('btnSearch').disabled = false;
+    }
+  }, 60);
+}
+
+// ── Algoritmo ─────────────────────────────────────────────────
+function findThreeCombinations(values, addresses, target) {
+  const n = values.length;
+  const eps = 1e-9;
+  const candidates = [];
+
+  const idxDesc = [...Array(n).keys()].sort((a,b) => Math.abs(values[b]) - Math.abs(values[a]));
+  candidates.push(greedy(values, target, idxDesc));
+  candidates.push(greedy(values, target, [...idxDesc].reverse()));
+
+  for (let s = 0; s < 60; s++) {
+    candidates.push(greedy(values, target, shuffleSeeded([...Array(n).keys()], s * 7 + 13)));
+  }
+
+  const sorted = [...candidates].sort((a,b) => Math.abs(a.diff) - Math.abs(b.diff));
+  for (let i = 0; i < Math.min(3, sorted.length); i++) {
+    candidates.push(...perturbSolution(values, target, sorted[i].selected, 30));
+  }
+
+  const unique = dedup(candidates, eps);
+  const exact = unique.filter(c => Math.abs(c.diff) < eps).sort((a,b) => a.selected.length - b.selected.length);
+  const less  = unique.filter(c => c.diff < -eps).sort((a,b) => Math.abs(a.diff) - Math.abs(b.diff));
+  const more  = unique.filter(c => c.diff >  eps).sort((a,b) => Math.abs(a.diff) - Math.abs(b.diff));
+
+  const allSorted = unique.sort((a,b) => Math.abs(a.diff) - Math.abs(b.diff));
+  const usedKeys = new Set();
+
+  const addIfNew = c => {
+    if (!c) return null;
+    const key = c.selected.slice().sort().join(',');
+    if (usedKeys.has(key)) return null;
+    usedKeys.add(key);
+    return c;
+  };
+
+  let s1 = addIfNew(exact[0] || allSorted[0]);
+  let s2 = addIfNew(less[0]) || addIfNew(less[1]);
+  let s3 = addIfNew(more[0]) || addIfNew(more[1]);
+
+  const toResult = (c, label) => c ? ({
+    label, sum: c.sum, diff: c.diff,
+    cells: c.selected.map(i => addresses[i]),
+    values: c.selected.map(i => values[i]),
+  }) : null;
+
+  return [toResult(s1,'exact'), toResult(s2,'less'), toResult(s3,'more')].filter(Boolean);
+}
+
+function greedy(values, target, order) {
+  let sum = 0; const selected = [];
+  for (const i of order) {
+    const v = values[i];
+    if (Math.abs(sum + v - target) <= Math.abs(sum - target)) { sum += v; selected.push(i); }
+  }
+  return { sum, diff: sum - target, selected };
+}
+
+function perturbSolution(values, target, selected, iterations) {
+  const n = values.length;
+  const results = [];
+  const selSet = new Set(selected);
+  for (let it = 0; it < iterations; it++) {
+    const newSel = new Set(selSet);
+    const mode = it % 3;
+    if (mode === 0 && newSel.size > 0) { const arr=[...newSel]; newSel.delete(arr[it%arr.length]); }
+    else if (mode === 1) { for(let i=it%n;;i=(i+1)%n){if(!newSel.has(i)){newSel.add(i);break;}} }
+    else if (mode === 2 && newSel.size > 0) {
+      const arr=[...newSel]; newSel.delete(arr[it%arr.length]);
+      for(let i=(it*3)%n;;i=(i+1)%n){if(!newSel.has(i)){newSel.add(i);break;}}
+    }
+    const newArr=[...newSel];
+    const sum=newArr.reduce((s,i)=>s+values[i],0);
+    results.push({sum,diff:sum-target,selected:newArr});
+  }
+  return results;
+}
+
+function dedup(candidates, eps) {
+  const seen = new Map();
+  for (const c of candidates) {
+    const key = c.selected.slice().sort((a,b)=>a-b).join(',');
+    if (!seen.has(key)) seen.set(key, c);
+  }
+  return [...seen.values()];
+}
+
+function shuffleSeeded(arr, seed) {
+  let s = seed;
+  for (let i = arr.length-1; i>0; i--) {
+    s = (s*1664525+1013904223)&0xffffffff;
+    const j = Math.abs(s)%(i+1);
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+// ── Renderizar resultados ─────────────────────────────────────
+function renderResults(results, target) {
+  const container = document.getElementById('results');
+  container.innerHTML = '';
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'results-title';
+  titleEl.textContent = `Resultados para ${formatNum(target)}`;
+  container.appendChild(titleEl);
+
+  const meta = {
+    exact: { pill: 'pill-exact', text: '🎯 Más cercano', icon: '🎯' },
+    less:  { pill: 'pill-less',  text: '▼ Un poco menos', icon: '▼' },
+    more:  { pill: 'pill-more',  text: '▲ Un poco más',  icon: '▲' },
+  };
+
+  for (const r of results) {
+    const m = meta[r.label];
+    const diffStr = Math.abs(r.diff) < 1e-9 ? 'exacto' : (r.diff > 0 ? '+' : '') + formatNum(r.diff);
+
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.innerHTML = `
+      <div class="rc-header">
+        <div class="rc-badge">
+          <span class="badge-pill ${m.pill}">${m.text}</span>
+        </div>
+        <div>
+          <span class="rc-sum">${formatNum(r.sum)}</span>
+          <span class="rc-diff">(${diffStr})</span>
+        </div>
+      </div>
+      <div class="rc-body">
+        <div class="rc-info">
+          Celdas: <span>${r.cells.length}</span>
+        </div>
+        <div class="cells-scroll">${r.cells.join('  ·  ')}</div>
+        <div class="rc-actions">
+          <button class="btn-act" onclick="copyCells('${r.label}')">⎘ Copiar celdas</button>
+          <button class="btn-act download" onclick="downloadResult('${r.label}')">⬇ Descargar Excel</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
+  }
+
+  container.classList.add('visible');
+  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Acciones ──────────────────────────────────────────────────
+function copyCells(label) {
+  const r = lastResults.find(x => x.label === label);
+  if (!r) return;
+  navigator.clipboard.writeText(r.cells.join(', ')).then(() => {
+    showToast('¡Celdas copiadas al portapapeles!');
+  });
+}
+
+function downloadResult(label) {
+  const r = lastResults.find(x => x.label === label);
+  if (!r) return;
+
+  const wb = XLSX.utils.book_new();
+  const data = [['Celda', 'Valor'], ...r.cells.map((c, i) => [c, r.values[i]]), ['TOTAL', r.sum]];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  XLSX.utils.book_append_sheet(wb, ws, 'SumFinder');
+  XLSX.writeFile(wb, `sumfinder_${label}_${formatNum(r.sum).replace(/[^0-9]/g,'')}.xlsx`);
+  showToast('¡Archivo descargado!');
+}
+
+// ── UI helpers ────────────────────────────────────────────────
+function showLoading(v) { document.getElementById('loading').classList.toggle('visible', v); }
+function showError(msg) { const b=document.getElementById('errorBox'); b.textContent='⚠ '+msg; b.classList.add('visible'); }
+function hideError() { document.getElementById('errorBox').classList.remove('visible'); }
+function clearResults() { const r=document.getElementById('results'); r.innerHTML=''; r.classList.remove('visible'); lastResults=[]; }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.opacity = '0', 3000);
+}
+
+function formatNum(n) {
+  return new Intl.NumberFormat('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n);
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+function indexToCol(n) {
+  let s = '';
+  n++;
+  while (n > 0) { const r=(n-1)%26; s=String.fromCharCode(65+r)+s; n=Math.floor((n-1)/26); }
+  return s;
+}
+</script>
+</body>
+</html>
